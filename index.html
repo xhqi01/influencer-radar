@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Influencer Radar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Mono', monospace;
+  background: #f7f6f3;
+  color: #1a1a1a;
+  min-height: 100vh;
+  padding: 4rem 2rem;
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-bottom: 2.5rem;
+  color: #1a1a1a;
+}
+
+h1 span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  margin-right: 0.6rem;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.field {
+  margin-bottom: 1.2rem;
+}
+
+label {
+  display: block;
+  font-size: 0.7rem;
+  color: #888;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+input {
+  width: 100%;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  padding: 0.65rem 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  outline: none;
+  color: #1a1a1a;
+  transition: border-color 0.15s;
+}
+
+input:focus { border-bottom-color: #1a1a1a; }
+input::placeholder { color: #bbb; }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.hint {
+  font-size: 0.65rem;
+  color: #aaa;
+  margin-top: 0.3rem;
+}
+
+.hint a { color: #aaa; }
+
+button {
+  margin-top: 2rem;
+  width: 100%;
+  padding: 0.8rem;
+  background: #1a1a1a;
+  color: #f7f6f3;
+  border: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+button:hover { opacity: 0.8; }
+button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* status */
+.status {
+  display: none;
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  color: #888;
+  letter-spacing: 0.05em;
+}
+.status.visible { display: block; }
+.status.error { color: #c0392b; }
+
+/* divider */
+.divider {
+  margin: 2.5rem 0 1.5rem;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+/* results */
+.results-meta {
+  font-size: 0.7rem;
+  color: #888;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+th {
+  text-align: left;
+  font-size: 0.62rem;
+  color: #aaa;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 400;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid #ddd;
+}
+
+td {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+td:not(:last-child) { padding-right: 1rem; }
+
+.td-num { color: #bbb; width: 24px; }
+
+.td-user { font-weight: 500; }
+.td-user a { color: #1a1a1a; text-decoration: none; }
+.td-user a:hover { text-decoration: underline; }
+
+.td-followers { color: #555; }
+
+.td-date { color: #aaa; font-size: 0.72rem; }
+
+.td-link a {
+  color: #aaa;
+  font-size: 0.7rem;
+  text-decoration: none;
+}
+.td-link a:hover { color: #1a1a1a; }
+
+.empty {
+  display: none;
+  font-size: 0.78rem;
+  color: #aaa;
+  padding: 2rem 0;
+}
+.empty.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1><span></span>Influencer Radar</h1>
+
+  <div class="field">
+    <label>Apify API Token</label>
+    <input type="password" id="token" placeholder="apify_api_xxxx">
+    <div class="hint">
+      <a href="https://console.apify.com/settings/integrations" target="_blank">Get token →</a>
+      never stored.
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Hashtag</label>
+    <input type="text" id="hashtag" placeholder="筋トレ">
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>Min Followers</label>
+      <input type="number" id="min" placeholder="4000" value="4000">
+    </div>
+    <div class="field">
+      <label>Max Followers</label>
+      <input type="number" id="max" placeholder="50000" value="50000">
+    </div>
+  </div>
+
+  <button id="btn" onclick="run()">Search</button>
+
+  <div class="status" id="status"></div>
+
+  <div id="results" style="display:none">
+    <hr class="divider">
+    <div class="results-meta" id="meta"></div>
+    <table id="table" style="display:none">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Followers</th>
+          <th>Last Post</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty">No results matched your filters.</div>
+  </div>
+
+</div>
+
+<script>
+async function run() {
+  const token   = document.getElementById('token').value.trim();
+  const hashtag = document.getElementById('hashtag').value.trim();
+  const minF    = parseInt(document.getElementById('min').value) || 0;
+  const maxF    = parseInt(document.getElementById('max').value) || Infinity;
+
+  if (!token)   return err('Please enter your Apify token.');
+  if (!hashtag) return err('Please enter a hashtag.');
+
+  setLoading(true, 'Starting Apify run…');
+
+  try {
+    const runRes = await fetch(
+      `https://api.apify.com/v2/acts/clockworks~tiktok-hashtag-scraper/runs?token=${token}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashtags: [hashtag], resultsPerPage: 50 })
+      }
+    );
+    if (!runRes.ok) {
+      const e = await runRes.json().catch(() => ({}));
+      throw new Error(e?.error?.message || `API error ${runRes.status}`);
+    }
+    const { data } = await runRes.json();
+    const runId = data.id;
+    const datasetId = data.defaultDatasetId;
+
+    setStatus('Scraping TikTok… (30–60s)');
+    await poll(runId, token);
+
+    setStatus('Processing…');
+    const items = await fetchItems(datasetId, token);
+
+    const sixMoAgo = Date.now() / 1000 - 180 * 86400;
+    const seen = {};
+    for (const item of items) {
+      const a = item.authorMeta || {};
+      const u = a.name || '';
+      const f = a.fans || 0;
+      const t = item.createTime || 0;
+      if (!u || f < minF || f > maxF || t < sixMoAgo) continue;
+      if (!seen[u] || t > seen[u].t) seen[u] = { f, t };
+    }
+
+    const results = Object.entries(seen)
+      .map(([u, d]) => ({
+        u, f: d.f,
+        date: d.t ? new Date(d.t * 1000).toISOString().split('T')[0] : '—'
+      }))
+      .sort((a, b) => b.f - a.f);
+
+    render(results, hashtag, minF, maxF);
+  } catch (e) {
+    err(e.message || 'Something went wrong.');
+  } finally {
+    document.getElementById('btn').disabled = false;
+  }
+}
+
+async function poll(runId, token) {
+  const deadline = Date.now() + 120000;
+  while (Date.now() < deadline) {
+    await sleep(4000);
+    const r = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
+    const { data } = await r.json();
+    if (data.status === 'SUCCEEDED') return;
+    if (['FAILED','ABORTED','TIMED-OUT'].includes(data.status))
+      throw new Error('Apify run ' + data.status);
+  }
+  throw new Error('Timed out.');
+}
+
+async function fetchItems(datasetId, token) {
+  const r = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}&limit=1000`);
+  if (!r.ok) throw new Error('Failed to fetch dataset.');
+  return r.json();
+}
+
+function render(results, hashtag, minF, maxF) {
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('meta').textContent =
+    `${results.length} influencers · #${hashtag} · ${minF.toLocaleString()}–${maxF.toLocaleString()} followers`;
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  if (!results.length) {
+    document.getElementById('table').style.display = 'none';
+    document.getElementById('empty').classList.add('visible');
+    setStatus('');
+    return;
+  }
+
+  document.getElementById('table').style.display = 'table';
+  document.getElementById('empty').classList.remove('visible');
+
+  results.forEach((r, i) => {
+    const url = `https://www.tiktok.com/@${r.u}`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-num">${i + 1}</td>
+      <td class="td-user"><a href="${url}" target="_blank">@${esc(r.u)}</a></td>
+      <td class="td-followers">${r.f.toLocaleString()}</td>
+      <td class="td-date">${r.date}</td>
+      <td class="td-link"><a href="${url}" target="_blank">↗</a></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('status').className = 'status';
+}
+
+function setLoading(on, msg) {
+  document.getElementById('btn').disabled = on;
+  setStatus(msg || '');
+}
+
+function setStatus(msg) {
+  const s = document.getElementById('status');
+  s.className = 'status' + (msg ? ' visible' : '');
+  s.textContent = msg;
+}
+
+function err(msg) {
+  const s = document.getElementById('status');
+  s.className = 'status visible error';
+  s.textContent = msg;
+  document.getElementById('btn').disabled = false;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
